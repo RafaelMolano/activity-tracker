@@ -11,7 +11,12 @@ import { authApi } from '@/api/auth'
 
 const schema = z.object({
   full_name: z.string().min(2, 'Mínimo 2 caracteres'),
-  email: z.string().email('Email inválido'),
+  email: z
+    .string()
+    .email('Email inválido')
+    .refine((v) => v.toLowerCase().endsWith('@solucionessyh.com'), {
+      message: 'Solo se permiten correos @solucionessyh.com',
+    }),
   password: z
     .string()
     .min(8, 'Mínimo 8 caracteres')
@@ -59,7 +64,7 @@ export default function RegisterPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="tu@empresa.com" {...register('email')} />
+              <Input id="email" type="email" placeholder="tu@solucionessyh.com" {...register('email')} />
               {errors.email && <p className="text-xs text-red-600">{errors.email.message}</p>}
             </div>
             <div className="space-y-1.5">

@@ -5,10 +5,21 @@ from pydantic import BaseModel, EmailStr, field_validator
 from app.models.user import UserRole
 
 
+ALLOWED_DOMAIN = "solucionessyh.com"
+
+
 class UserRegister(BaseModel):
     email: EmailStr
     password: str
     full_name: str
+
+    @field_validator("email")
+    @classmethod
+    def email_domain(cls, v: str) -> str:
+        domain = v.split("@")[-1].lower()
+        if domain != ALLOWED_DOMAIN:
+            raise ValueError(f"Solo se permiten correos @{ALLOWED_DOMAIN}")
+        return v.lower()
 
     @field_validator("password")
     @classmethod
