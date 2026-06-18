@@ -2,16 +2,19 @@ import type { ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { LogOut, LayoutDashboard, Shield } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { useQueryClient } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
 import { Button } from '@/components/ui/button'
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, clearAuth, isAdmin } = useAuthStore()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
   const handleLogout = () => {
     authApi.logout()
     clearAuth()
+    queryClient.clear()
     navigate('/login')
   }
 
