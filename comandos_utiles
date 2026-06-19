@@ -1,0 +1,42 @@
+al hacer gitpull en el server donde se encuentra alojada la aplicación front y back, que comando de docker se requiere?                                
+
+● Depende de qué cambió:
+
+  Solo cambios en código Python o TypeScript (sin tocar Dockerfile ni requirements.txt)
+
+  docker compose restart backend
+  docker compose restart frontend
+
+  El volumen montado (./backend:/app y ./frontend:/app) ya sincroniza los archivos — no hace falta rebuild.
+
+  ---
+  Si cambiaron dependencias (requirements.txt o package.json)
+
+  docker compose up -d --build backend
+  # o
+  docker compose up -d --build frontend
+
+  ---
+  Si cambió docker-compose.yml o nginx.conf
+
+  docker compose down
+  docker compose up -d
+
+  ---
+  Comando universal (sirve siempre, más lento)
+
+  docker compose up -d --build
+
+  Reconstruye todo desde cero. Úsalo si no estás seguro de qué cambió.
+
+  ---
+  Flujo completo recomendado en el servidor
+
+  git pull
+  docker compose up -d --build
+
+  Con el --build, Docker solo reconstruye las imágenes que detecta como modificadas (por cambios en el Dockerfile o el contexto de build). Para los
+  contenedores que no cambiaron, simplemente los reinicia.
+
+
+  

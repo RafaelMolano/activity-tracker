@@ -50,7 +50,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="tu@empresa.com" {...register('email')} />
+              <Input id="email" type="email" placeholder="tu@solucionessyh.com" {...register('email')} />
               {errors.email && <p className="text-xs text-red-600">{errors.email.message}</p>}
             </div>
             <div className="space-y-1.5">
