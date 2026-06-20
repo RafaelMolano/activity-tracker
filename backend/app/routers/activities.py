@@ -1,15 +1,16 @@
 import uuid
 import math
-from datetime import date
+from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func, and_, or_, text
 
 from app.database import get_db
 from app.models.activity import Activity
 from app.models.user import User
 from app.schemas.activity import (
-    ActivityCreate, ActivityUpdate, ActivityResponse, ActivityListResponse
+    ActivityCreate, ActivityUpdate, ActivityResponse,
+    ActivityListResponse, ActivityStatsResponse, ActivityStatsItem,
 )
 from app.dependencies import get_current_user
 
@@ -76,6 +77,69 @@ async def create_activity(
     await db.flush()
     await db.refresh(activity)
     return activity
+
+
+@router.get("/stats", response_model=ActivityStatsResponse)
+async def activity_stats(
+    date_from: date | None = Query(None, description="Fecha inicio YYYY-MM-DD"),
+    date_to: date | None = Query(None, description="Fecha fin YYYY-MM-DD"),
+    group_by: str = Query("day", pattern="^(day|week|month)$"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    today = date.today()
+    if not date_from:
+        date_from = today - timedelta(days=today.weekday())
+    if not date_to:
+        date_to = today
+
+    filters = [
+        Activity.user_id == current_user.id,
+        Activity.date >= date_from,
+        Activity.date <= date_to,
+    ]
+
+    duration_sec = func.timestampdiff(text("SECOND"), Activity.start_time, Activity.end_time)
+
+    if group_by == "week":
+        period_expr = func.date_format(Activity.date, "%x-W%v").label("period")
+    elif group_by == "month":
+        period_expr = func.date_format(Activity.date, "%Y-%m").label("period")
+    else:
+        period_expr = func.date_format(Activity.date, "%Y-%m-%d").label("period")
+
+    query = (
+        select(
+            period_expr,
+            func.sum(duration_sec).label("total_seconds"),
+            func.count().label("count"),
+        )
+        .where(and_(*filters))
+        .group_by(period_expr)
+        .order_by(period_expr)
+    )
+
+    result = await db.execute(query)
+    rows = result.all()
+
+    items = [
+        ActivityStatsItem(
+            period=row.period,
+            total_hours=round((row.total_seconds or 0) / 3600, 2),
+            count=row.count,
+        )
+        for row in rows
+    ]
+
+    total_hours = round(sum(item.total_hours for item in items), 2)
+
+    return ActivityStatsResponse(
+        items=items,
+        total_hours=total_hours,
+        group_by=group_by,
+        date_from=date_from,
+        date_to=date_to,
+    )
 
 
 @router.get("/{activity_id}", response_model=ActivityResponse)

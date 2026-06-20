@@ -1,13 +1,22 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { activitiesApi, adminApi } from '@/api/activities'
 import { useAuthStore } from '@/store/authStore'
-import type { ActivityCreate, ActivityUpdate, ActivityFilters } from '@/types'
+import type { ActivityCreate, ActivityUpdate, ActivityFilters, StatsFilters } from '@/types'
 
 export function useActivities(filters: ActivityFilters = {}) {
   const userId = useAuthStore((s) => s.user?.id)
   return useQuery({
     queryKey: ['activities', userId, filters],
     queryFn: () => activitiesApi.list(filters),
+    enabled: !!userId,
+  })
+}
+
+export function useActivityStats(filters: StatsFilters) {
+  const userId = useAuthStore((s) => s.user?.id)
+  return useQuery({
+    queryKey: ['activities', 'stats', userId, filters],
+    queryFn: () => activitiesApi.stats(filters),
     enabled: !!userId,
   })
 }

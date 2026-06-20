@@ -50,6 +50,26 @@ export interface ActivityFilters {
   page_size?: number
 }
 
+export interface ActivityStatsItem {
+  period: string
+  total_hours: number
+  count: number
+}
+
+export interface ActivityStatsResponse {
+  items: ActivityStatsItem[]
+  total_hours: number
+  group_by: string
+  date_from: string
+  date_to: string
+}
+
+export interface StatsFilters {
+  date_from?: string
+  date_to?: string
+  group_by: 'day' | 'week' | 'month'
+}
+
 export interface TokenResponse {
   access_token: string
   token_type: string

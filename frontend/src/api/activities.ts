@@ -5,6 +5,8 @@ import type {
   ActivityUpdate,
   ActivityListResponse,
   ActivityFilters,
+  ActivityStatsResponse,
+  StatsFilters,
   User,
 } from '../types'
 
@@ -14,6 +16,14 @@ export const activitiesApi = {
       Object.entries(filters).filter(([, v]) => v !== undefined && v !== '')
     )
     const res = await apiClient.get<ActivityListResponse>('/activities', { params })
+    return res.data
+  },
+
+  stats: async (filters: StatsFilters): Promise<ActivityStatsResponse> => {
+    const params = Object.fromEntries(
+      Object.entries(filters).filter(([, v]) => v !== undefined && v !== '')
+    )
+    const res = await apiClient.get<ActivityStatsResponse>('/activities/stats', { params })
     return res.data
   },
 

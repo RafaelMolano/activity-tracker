@@ -71,3 +71,17 @@ class ActivityListResponse(BaseModel):
     page: int
     page_size: int
     pages: int
+
+
+class ActivityStatsItem(BaseModel):
+    period: str
+    total_hours: float
+    count: int
+
+
+class ActivityStatsResponse(BaseModel):
+    items: list[ActivityStatsItem]
+    total_hours: float
+    group_by: str
+    date_from: _Date
+    date_to: _Date
