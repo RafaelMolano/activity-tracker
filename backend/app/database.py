@@ -8,6 +8,9 @@ settings = get_settings()
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
+    pool_size=10,
+    max_overflow=10,
+    pool_recycle=60,
     pool_pre_ping=False,
 )
 
@@ -23,7 +26,7 @@ class Base(DeclarativeBase):
 
 
 async def create_tables():
-    from app.models import user, activity  # noqa: F401 — importar para registrar modelos
+    from app.models import user, activity, audit  # noqa: F401 — importar para registrar modelos
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 

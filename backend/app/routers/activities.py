@@ -12,6 +12,7 @@ from app.schemas.activity import (
     ActivityCreate, ActivityUpdate, ActivityResponse,
     ActivityListResponse, ActivityStatsResponse, ActivityStatsItem,
 )
+from app.services.audit_service import log_action
 from app.dependencies import get_current_user
 
 router = APIRouter()
@@ -76,6 +77,12 @@ async def create_activity(
     db.add(activity)
     await db.flush()
     await db.refresh(activity)
+    await log_action(
+        db, "CREATE", "activity",
+        user_id=current_user.id,
+        entity_id=activity.id,
+        details=f"Actividad creada: {activity.name}",
+    )
     return activity
 
 
@@ -188,6 +195,12 @@ async def update_activity(
 
     await db.flush()
     await db.refresh(activity)
+    await log_action(
+        db, "UPDATE", "activity",
+        user_id=current_user.id,
+        entity_id=activity.id,
+        details=f"Actividad actualizada: {activity.name}",
+    )
     return activity
 
 
@@ -205,4 +218,10 @@ async def delete_activity(
     activity = result.scalar_one_or_none()
     if not activity:
         raise HTTPException(status_code=404, detail="Actividad no encontrada")
+    await log_action(
+        db, "DELETE", "activity",
+        user_id=current_user.id,
+        entity_id=activity.id,
+        details=f"Actividad eliminada: {activity.name}",
+    )
     await db.delete(activity)
