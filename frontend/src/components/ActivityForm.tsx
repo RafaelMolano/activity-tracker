@@ -90,8 +90,12 @@ export default function ActivityForm({ open, onClose, activity }: ActivityFormPr
         toast({ title: 'Actividad creada', variant: 'success' })
       }
       onClose()
-    } catch {
-      toast({ title: 'Error al guardar la actividad', variant: 'destructive' })
+    } catch (error: unknown) {
+      const msg =
+        (error as any)?.response?.data?.detail?.[0]?.msg?.replace(/^Value error,\s*/, '') ??
+        (error as any)?.response?.data?.detail ??
+        'Error al guardar la actividad'
+      toast({ title: msg, variant: 'destructive' })
     }
   }
 
