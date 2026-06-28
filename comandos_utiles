@@ -5,7 +5,7 @@ al hacer gitpull en el server donde se encuentra alojada la aplicación front y 
   Solo cambios en código Python o TypeScript (sin tocar Dockerfile ni requirements.txt)
 
   docker compose restart backend
-  docker compose restart frontend
+  docker compose up -d --build nginx
 
   El volumen montado (./backend:/app y ./frontend:/app) ya sincroniza los archivos — no hace falta rebuild.
 
