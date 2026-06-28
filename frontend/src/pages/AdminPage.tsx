@@ -231,7 +231,6 @@ export default function AdminPage() {
                     grouped[item.user_full_name].push(item)
                   }
                   return Object.entries(grouped).map(([userName, items]) => {
-                    const userMax = Math.max(...items.map((i) => i.total_hours), 0.1)
                     return (
                       <div key={userName} className="border border-gray-200 rounded-xl bg-white p-4">
                         <h3 className="text-sm font-semibold text-gray-700 mb-3">{userName}</h3>
