@@ -15,6 +15,8 @@ from app.schemas.activity import (
     AdminActivityListResponse,
     AdminActivitySummaryItem,
     AdminActivitySummaryResponse,
+    AdminAverageResponse,
+    AdminAverageItem,
 )
 from app.schemas.audit import AuditLogResponse, AuditLogListResponse
 from app.schemas.user import UserResponse, UserUpdate
@@ -154,6 +156,85 @@ async def list_activity_summary(
     return AdminActivitySummaryResponse(
         items=items,
         total_hours=total_hours,
+        group_by=group_by,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+
+@router.get("/activities/average", response_model=AdminAverageResponse)
+async def list_activity_average(
+    date_from: date | None = Query(None, description="Fecha inicio YYYY-MM-DD"),
+    date_to: date | None = Query(None, description="Fecha fin YYYY-MM-DD"),
+    group_by: str = Query("day", pattern="^(day|week|month)$"),
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    today = date.today()
+    if not date_from:
+        date_from = today - timedelta(days=30)
+    if not date_to:
+        date_to = today
+
+    filters = [
+        Activity.date >= date_from,
+        Activity.date <= date_to,
+    ]
+
+    where = and_(*filters)
+
+    duration_sec = func.timestampdiff(text("SECOND"), Activity.start_time, Activity.end_time)
+
+    if group_by == "week":
+        period_expr = func.date_format(Activity.date, "%x-W%v").label("period")
+    elif group_by == "month":
+        period_expr = func.date_format(Activity.date, "%Y-%m").label("period")
+    else:
+        period_expr = func.date_format(Activity.date, "%Y-%m-%d").label("period")
+
+    per_period = (
+        select(
+            Activity.user_id,
+            User.full_name,
+            period_expr,
+            func.sum(duration_sec).label("period_seconds"),
+            func.count().label("period_count"),
+        )
+        .join(User, Activity.user_id == User.id)
+        .where(where)
+        .group_by(Activity.user_id, User.full_name, period_expr)
+    ).subquery()
+
+    q = select(
+        per_period.c.user_id,
+        per_period.c.full_name,
+        func.sum(per_period.c.period_seconds).label("total_seconds"),
+        func.sum(per_period.c.period_count).label("total_count"),
+        func.count().label("periods"),
+    ).group_by(per_period.c.user_id, per_period.c.full_name)
+
+    result = await db.execute(q)
+    rows = result.all()
+
+    items = [
+        AdminAverageItem(
+            user_id=row.user_id,
+            user_full_name=row.full_name,
+            avg_hours=round((row.total_seconds or 0) / 3600 / max(row.periods, 1), 2),
+            total_hours=round((row.total_seconds or 0) / 3600, 2),
+            count=row.total_count,
+            periods=row.periods,
+        )
+        for row in rows
+    ]
+
+    team_avg = round(
+        sum(item.avg_hours for item in items) / len(items) if items else 0, 2
+    )
+
+    return AdminAverageResponse(
+        items=sorted(items, key=lambda x: x.avg_hours, reverse=True),
+        team_avg=team_avg,
         group_by=group_by,
         date_from=date_from,
         date_to=date_to,

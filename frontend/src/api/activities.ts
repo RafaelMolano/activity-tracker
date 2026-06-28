@@ -10,6 +10,7 @@ import type {
   AdminActivityListResponse,
   AdminSummaryFilters,
   AdminSummaryResponse,
+  AdminAverageResponse,
   User,
 } from '../types'
 
@@ -59,6 +60,14 @@ export const adminApi = {
       Object.entries(filters).filter(([, v]) => v !== undefined && v !== '')
     )
     const res = await apiClient.get<AdminSummaryResponse>('/admin/activities/summary', { params })
+    return res.data
+  },
+
+  listAverage: async (filters: AdminSummaryFilters = {}): Promise<AdminAverageResponse> => {
+    const params = Object.fromEntries(
+      Object.entries(filters).filter(([, v]) => v !== undefined && v !== '')
+    )
+    const res = await apiClient.get<AdminAverageResponse>('/admin/activities/average', { params })
     return res.data
   },
 

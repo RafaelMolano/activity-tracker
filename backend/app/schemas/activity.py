@@ -128,3 +128,20 @@ class AdminActivitySummaryResponse(BaseModel):
     group_by: str
     date_from: _Date
     date_to: _Date
+
+
+class AdminAverageItem(BaseModel):
+    user_id: uuid.UUID
+    user_full_name: str
+    avg_hours: float
+    total_hours: float
+    count: int
+    periods: int
+
+
+class AdminAverageResponse(BaseModel):
+    items: list[AdminAverageItem]
+    team_avg: float
+    group_by: str
+    date_from: _Date
+    date_to: _Date

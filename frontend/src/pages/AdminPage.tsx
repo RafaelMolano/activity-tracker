@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import Layout from '@/components/Layout'
-import { useAdminActivities, useAdminUsers, useAdminSummary, useUpdateUser } from '@/hooks/useActivities'
+import { useAdminActivities, useAdminUsers, useAdminSummary, useAdminAverage, useUpdateUser } from '@/hooks/useActivities'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from '@/hooks/use-toast'
 
-type Tab = 'users' | 'activities' | 'summary'
+type Tab = 'users' | 'activities' | 'summary' | 'average'
 
 export default function AdminPage() {
   const [tab, setTab] = useState<Tab>('users')
@@ -15,6 +15,9 @@ export default function AdminPage() {
   const [activitiesDateTo, setActivitiesDateTo] = useState('')
   const [activitiesUserId, setActivitiesUserId] = useState('')
   const [summaryGroupBy, setSummaryGroupBy] = useState<'day' | 'week' | 'month'>('day')
+  const [averageDateFrom, setAverageDateFrom] = useState('')
+  const [averageDateTo, setAverageDateTo] = useState('')
+  const [averageGroupBy, setAverageGroupBy] = useState<'day' | 'week' | 'month'>('day')
 
   const { data: users } = useAdminUsers()
   const { data: activities } = useAdminActivities({
@@ -23,6 +26,11 @@ export default function AdminPage() {
     user_id: activitiesUserId || undefined,
   })
   const { data: summary } = useAdminSummary({ group_by: summaryGroupBy })
+  const { data: average } = useAdminAverage({
+    date_from: averageDateFrom || undefined,
+    date_to: averageDateTo || undefined,
+    group_by: averageGroupBy,
+  })
   const updateUserMutation = useUpdateUser()
 
   const toggleActive = async (id: string, isActive: boolean) => {
@@ -38,10 +46,15 @@ export default function AdminPage() {
     { key: 'users', label: 'Usuarios' },
     { key: 'activities', label: 'Actividades' },
     { key: 'summary', label: 'Resumen' },
+    { key: 'average', label: 'Promedio' },
   ]
 
   const maxHours = summary?.items.length
     ? Math.max(...summary.items.map((i) => i.total_hours), 0.1)
+    : 1
+
+  const maxAvg = average?.items.length
+    ? Math.max(...average.items.map((i) => i.avg_hours), 0.1)
     : 1
 
   return (
@@ -263,6 +276,118 @@ export default function AdminPage() {
                   })
                 })()}
               </div>
+            ) : (
+              <div className="text-sm text-gray-500 py-8 text-center">
+                No hay datos para el período seleccionado.
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === 'average' && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-3 items-end">
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Desde</label>
+                <Input
+                  type="date"
+                  className="w-36"
+                  value={averageDateFrom}
+                  onChange={(e) => setAverageDateFrom(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Hasta</label>
+                <Input
+                  type="date"
+                  className="w-36"
+                  value={averageDateTo}
+                  onChange={(e) => setAverageDateTo(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Agrupar por</label>
+                <div className="flex gap-1">
+                  {(['day', 'week', 'month'] as const).map((g) => (
+                    <Button
+                      key={g}
+                      variant={averageGroupBy === g ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setAverageGroupBy(g)}
+                    >
+                      {g === 'day' ? 'Día' : g === 'week' ? 'Semana' : 'Mes'}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {average && average.items.length > 0 ? (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="border border-gray-200 rounded-xl bg-white p-4">
+                    <p className="text-xs text-gray-500 mb-1">Promedio del equipo</p>
+                    <p className="text-2xl font-bold">{average.team_avg} h</p>
+                  </div>
+                  <div className="border border-gray-200 rounded-xl bg-white p-4">
+                    <p className="text-xs text-gray-500 mb-1">Mejor promedio</p>
+                    <p className="text-2xl font-bold">
+                      {average.items[0]?.avg_hours ?? 0} h
+                    </p>
+                    <p className="text-xs text-gray-400">{average.items[0]?.user_full_name}</p>
+                  </div>
+                  <div className="border border-gray-200 rounded-xl bg-white p-4">
+                    <p className="text-xs text-gray-500 mb-1">Usuarios con actividad</p>
+                    <p className="text-2xl font-bold">{average.items.length}</p>
+                  </div>
+                </div>
+
+                <div className="border border-gray-200 rounded-xl bg-white p-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-4">
+                    Promedio de horas por {averageGroupBy === 'day' ? 'día' : averageGroupBy === 'week' ? 'semana' : 'mes'}
+                  </h3>
+                  <div className="space-y-3">
+                    {average.items.map((item) => {
+                      const pct = (item.avg_hours / maxAvg) * 100
+                      const isAboveAvg = item.avg_hours > average.team_avg
+                      return (
+                        <div key={item.user_id}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium text-gray-700">
+                              {item.user_full_name}
+                            </span>
+                            <span className="text-sm font-semibold tabular-nums">
+                              {item.avg_hours} h
+                              <span className="text-xs text-gray-400 ml-1">
+                                /{averageGroupBy === 'day' ? 'día' : averageGroupBy === 'week' ? 'semana' : 'mes'}
+                              </span>
+                            </span>
+                          </div>
+                          <div className="relative">
+                            <div className="h-6 bg-gray-100 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-300 ${
+                                  isAboveAvg ? 'bg-brand-500' : 'bg-amber-400'
+                                }`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <div
+                              className="absolute top-0 h-6 border-r-2 border-dashed border-gray-600"
+                              style={{ left: `${(average.team_avg / maxAvg) * 100}%` }}
+                              title="Promedio del equipo"
+                            />
+                          </div>
+                          <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+                            <span>{item.count} actividades en {item.periods} {averageGroupBy === 'day' ? 'días' : averageGroupBy === 'week' ? 'semanas' : 'meses'}</span>
+                            <span>{item.total_hours}h totales</span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </>
             ) : (
               <div className="text-sm text-gray-500 py-8 text-center">
                 No hay datos para el período seleccionado.

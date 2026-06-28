@@ -106,6 +106,23 @@ export interface AdminSummaryResponse {
   date_to: string
 }
 
+export interface AdminAverageItem {
+  user_id: string
+  user_full_name: string
+  avg_hours: number
+  total_hours: number
+  count: number
+  periods: number
+}
+
+export interface AdminAverageResponse {
+  items: AdminAverageItem[]
+  team_avg: number
+  group_by: string
+  date_from: string
+  date_to: string
+}
+
 export interface TokenResponse {
   access_token: string
   token_type: string

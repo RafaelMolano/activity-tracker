@@ -63,6 +63,13 @@ export function useAdminSummary(filters: AdminSummaryFilters = {}) {
   })
 }
 
+export function useAdminAverage(filters: AdminSummaryFilters = {}) {
+  return useQuery({
+    queryKey: ['admin', 'average', filters],
+    queryFn: () => adminApi.listAverage(filters),
+  })
+}
+
 export function useAdminUsers() {
   return useQuery({
     queryKey: ['admin', 'users'],
