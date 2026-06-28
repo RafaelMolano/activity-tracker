@@ -26,6 +26,13 @@ class ActivityCreate(BaseModel):
     def normalize_tags(cls, v: list[str]) -> list[str]:
         return [tag.strip().lower() for tag in v if tag.strip()]
 
+    @field_validator("date")
+    @classmethod
+    def date_not_in_future(cls, v: _Date) -> _Date:
+        if v > date.today():
+            raise ValueError("La fecha no puede ser posterior al día de hoy")
+        return v
+
     @field_validator("name")
     @classmethod
     def name_not_empty(cls, v: str) -> str:
@@ -48,6 +55,13 @@ class ActivityUpdate(BaseModel):
         if v is None:
             return v
         return [tag.strip().lower() for tag in v if tag.strip()]
+
+    @field_validator("date")
+    @classmethod
+    def date_not_in_future(cls, v: _Date | None) -> _Date | None:
+        if v is not None and v > date.today():
+            raise ValueError("La fecha no puede ser posterior al día de hoy")
+        return v
 
 
 class ActivityResponse(BaseModel):
