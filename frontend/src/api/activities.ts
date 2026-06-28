@@ -7,6 +7,9 @@ import type {
   ActivityFilters,
   ActivityStatsResponse,
   StatsFilters,
+  AdminActivityListResponse,
+  AdminSummaryFilters,
+  AdminSummaryResponse,
   User,
 } from '../types'
 
@@ -43,11 +46,19 @@ export const activitiesApi = {
 }
 
 export const adminApi = {
-  listAllActivities: async (filters: ActivityFilters & { user_id?: string } = {}): Promise<ActivityListResponse> => {
+  listAllActivities: async (filters: ActivityFilters & { user_id?: string } = {}): Promise<AdminActivityListResponse> => {
     const params = Object.fromEntries(
       Object.entries(filters).filter(([, v]) => v !== undefined && v !== '')
     )
-    const res = await apiClient.get<ActivityListResponse>('/admin/activities', { params })
+    const res = await apiClient.get<AdminActivityListResponse>('/admin/activities', { params })
+    return res.data
+  },
+
+  listSummary: async (filters: AdminSummaryFilters = {}): Promise<AdminSummaryResponse> => {
+    const params = Object.fromEntries(
+      Object.entries(filters).filter(([, v]) => v !== undefined && v !== '')
+    )
+    const res = await apiClient.get<AdminSummaryResponse>('/admin/activities/summary', { params })
     return res.data
   },
 

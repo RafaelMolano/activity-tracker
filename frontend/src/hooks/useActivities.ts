@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { activitiesApi, adminApi } from '@/api/activities'
 import { useAuthStore } from '@/store/authStore'
-import type { ActivityCreate, ActivityUpdate, ActivityFilters, StatsFilters } from '@/types'
+import type { ActivityCreate, ActivityUpdate, ActivityFilters, StatsFilters, AdminSummaryFilters } from '@/types'
 
 export function useActivities(filters: ActivityFilters = {}) {
   const userId = useAuthStore((s) => s.user?.id)
@@ -53,6 +53,13 @@ export function useAdminActivities(filters: ActivityFilters & { user_id?: string
   return useQuery({
     queryKey: ['admin', 'activities', filters],
     queryFn: () => adminApi.listAllActivities(filters),
+  })
+}
+
+export function useAdminSummary(filters: AdminSummaryFilters = {}) {
+  return useQuery({
+    queryKey: ['admin', 'summary', filters],
+    queryFn: () => adminApi.listSummary(filters),
   })
 }
 

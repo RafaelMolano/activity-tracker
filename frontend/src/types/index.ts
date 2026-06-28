@@ -70,6 +70,42 @@ export interface StatsFilters {
   group_by: 'day' | 'week' | 'month'
 }
 
+export interface AdminActivity extends Activity {
+  user_full_name: string
+  user_email: string
+}
+
+export interface AdminActivityListResponse {
+  items: AdminActivity[]
+  total: number
+  page: number
+  page_size: number
+  pages: number
+}
+
+export interface AdminSummaryFilters {
+  date_from?: string
+  date_to?: string
+  group_by?: 'day' | 'week' | 'month'
+  user_id?: string
+}
+
+export interface AdminSummaryItem {
+  user_id: string
+  user_full_name: string
+  period: string
+  total_hours: number
+  count: number
+}
+
+export interface AdminSummaryResponse {
+  items: AdminSummaryItem[]
+  total_hours: number
+  group_by: string
+  date_from: string
+  date_to: string
+}
+
 export interface TokenResponse {
   access_token: string
   token_type: string

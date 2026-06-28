@@ -1,14 +1,21 @@
 import uuid
 import math
+from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, text
 
 from app.database import get_db
 from app.models.activity import Activity
 from app.models.audit import AuditLog
 from app.models.user import User
-from app.schemas.activity import ActivityListResponse
+from app.schemas.activity import (
+    ActivityListResponse,
+    AdminActivityResponse,
+    AdminActivityListResponse,
+    AdminActivitySummaryItem,
+    AdminActivitySummaryResponse,
+)
 from app.schemas.audit import AuditLogResponse, AuditLogListResponse
 from app.schemas.user import UserResponse, UserUpdate
 from app.services.audit_service import log_action
@@ -17,7 +24,7 @@ from app.dependencies import require_admin
 router = APIRouter()
 
 
-@router.get("/activities", response_model=ActivityListResponse)
+@router.get("/activities", response_model=AdminActivityListResponse)
 async def list_all_activities(
     date_from: str | None = Query(None),
     date_to: str | None = Query(None),
@@ -45,20 +52,111 @@ async def list_all_activities(
 
     offset = (page - 1) * page_size
     result = await db.execute(
-        select(Activity)
+        select(Activity, User.full_name, User.email)
+        .join(User, Activity.user_id == User.id)
         .where(where)
-        .order_by(Activity.date.desc())
+        .order_by(Activity.date.desc(), Activity.start_time.desc())
         .offset(offset)
         .limit(page_size)
     )
-    items = result.scalars().all()
+    rows = result.all()
 
-    return ActivityListResponse(
+    items = [
+        AdminActivityResponse(
+            id=row[0].id,
+            user_id=row[0].user_id,
+            name=row[0].name,
+            date=row[0].date,
+            start_time=row[0].start_time,
+            end_time=row[0].end_time,
+            tags=row[0].tags,
+            observations=row[0].observations,
+            created_at=row[0].created_at,
+            updated_at=row[0].updated_at,
+            user_full_name=row[1],
+            user_email=row[2],
+        )
+        for row in rows
+    ]
+
+    return AdminActivityListResponse(
         items=items,
         total=total,
         page=page,
         page_size=page_size,
         pages=math.ceil(total / page_size) if total else 0,
+    )
+
+
+@router.get("/activities/summary", response_model=AdminActivitySummaryResponse)
+async def list_activity_summary(
+    date_from: date | None = Query(None, description="Fecha inicio YYYY-MM-DD"),
+    date_to: date | None = Query(None, description="Fecha fin YYYY-MM-DD"),
+    group_by: str = Query("day", pattern="^(day|week|month)$"),
+    user_id: uuid.UUID | None = Query(None, description="Filtrar por usuario"),
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    today = date.today()
+    if not date_from:
+        date_from = today - timedelta(days=30)
+    if not date_to:
+        date_to = today
+
+    filters = [
+        Activity.date >= date_from,
+        Activity.date <= date_to,
+    ]
+    if user_id:
+        filters.append(Activity.user_id == user_id)
+
+    where = and_(*filters)
+
+    duration_sec = func.timestampdiff(text("SECOND"), Activity.start_time, Activity.end_time)
+
+    if group_by == "week":
+        period_expr = func.date_format(Activity.date, "%x-W%v").label("period")
+    elif group_by == "month":
+        period_expr = func.date_format(Activity.date, "%Y-%m").label("period")
+    else:
+        period_expr = func.date_format(Activity.date, "%Y-%m-%d").label("period")
+
+    query = (
+        select(
+            Activity.user_id,
+            User.full_name,
+            period_expr,
+            func.sum(duration_sec).label("total_seconds"),
+            func.count().label("count"),
+        )
+        .join(User, Activity.user_id == User.id)
+        .where(where)
+        .group_by(Activity.user_id, User.full_name, period_expr)
+        .order_by(Activity.user_id, period_expr)
+    )
+
+    result = await db.execute(query)
+    rows = result.all()
+
+    items = [
+        AdminActivitySummaryItem(
+            user_id=row.user_id,
+            user_full_name=row.full_name,
+            period=row.period,
+            total_hours=round((row.total_seconds or 0) / 3600, 2),
+            count=row.count,
+        )
+        for row in rows
+    ]
+
+    total_hours = round(sum(item.total_hours for item in items), 2)
+
+    return AdminActivitySummaryResponse(
+        items=items,
+        total_hours=total_hours,
+        group_by=group_by,
+        date_from=date_from,
+        date_to=date_to,
     )
 
 

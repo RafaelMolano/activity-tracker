@@ -99,3 +99,32 @@ class ActivityStatsResponse(BaseModel):
     group_by: str
     date_from: _Date
     date_to: _Date
+
+
+class AdminActivityResponse(ActivityResponse):
+    user_full_name: str
+    user_email: str
+
+
+class AdminActivityListResponse(BaseModel):
+    items: list[AdminActivityResponse]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+class AdminActivitySummaryItem(BaseModel):
+    user_id: uuid.UUID
+    user_full_name: str
+    period: str
+    total_hours: float
+    count: int
+
+
+class AdminActivitySummaryResponse(BaseModel):
+    items: list[AdminActivitySummaryItem]
+    total_hours: float
+    group_by: str
+    date_from: _Date
+    date_to: _Date
