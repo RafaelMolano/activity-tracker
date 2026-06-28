@@ -3,6 +3,7 @@ import Layout from '@/components/Layout'
 import { useAdminActivities, useAdminUsers, useAdminSummary, useUpdateUser } from '@/hooks/useActivities'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from '@/hooks/use-toast'
 
@@ -10,9 +11,17 @@ type Tab = 'users' | 'activities' | 'summary'
 
 export default function AdminPage() {
   const [tab, setTab] = useState<Tab>('users')
+  const [activitiesDateFrom, setActivitiesDateFrom] = useState('')
+  const [activitiesDateTo, setActivitiesDateTo] = useState('')
+  const [activitiesUserId, setActivitiesUserId] = useState('')
   const [summaryGroupBy, setSummaryGroupBy] = useState<'day' | 'week' | 'month'>('day')
+
   const { data: users } = useAdminUsers()
-  const { data: activities } = useAdminActivities()
+  const { data: activities } = useAdminActivities({
+    date_from: activitiesDateFrom || undefined,
+    date_to: activitiesDateTo || undefined,
+    user_id: activitiesUserId || undefined,
+  })
   const { data: summary } = useAdminSummary({ group_by: summaryGroupBy })
   const updateUserMutation = useUpdateUser()
 
@@ -30,6 +39,10 @@ export default function AdminPage() {
     { key: 'activities', label: 'Actividades' },
     { key: 'summary', label: 'Resumen' },
   ]
+
+  const maxHours = summary?.items.length
+    ? Math.max(...summary.items.map((i) => i.total_hours), 0.1)
+    : 1
 
   return (
     <Layout>
@@ -100,41 +113,86 @@ export default function AdminPage() {
         )}
 
         {tab === 'activities' && (
-          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Actividad</TableHead>
-                  <TableHead>Usuario</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Horario</TableHead>
-                  <TableHead>Tags</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {activities?.items.map((activity) => (
-                  <TableRow key={activity.id}>
-                    <TableCell className="font-medium">{activity.name}</TableCell>
-                    <TableCell className="text-gray-700">{activity.user_full_name}</TableCell>
-                    <TableCell className="text-gray-400 text-xs">{activity.user_email}</TableCell>
-                    <TableCell className="text-gray-500 text-xs">{activity.date}</TableCell>
-                    <TableCell className="text-xs text-gray-500">
-                      {activity.start_time.slice(0, 5)} — {activity.end_time.slice(0, 5)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 flex-wrap">
-                        {activity.tags.map((tag) => (
-                          <Badge key={tag} variant="secondary">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    </TableCell>
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-3 items-end">
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Desde</label>
+                <Input
+                  type="date"
+                  className="w-36"
+                  value={activitiesDateFrom}
+                  onChange={(e) => setActivitiesDateFrom(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Hasta</label>
+                <Input
+                  type="date"
+                  className="w-36"
+                  value={activitiesDateTo}
+                  onChange={(e) => setActivitiesDateTo(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Usuario</label>
+                <select
+                  value={activitiesUserId}
+                  onChange={(e) => setActivitiesUserId(e.target.value)}
+                  className="flex h-9 w-44 rounded-md border border-gray-300 bg-white px-3 py-1 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                >
+                  <option value="">Todos los usuarios</option>
+                  {users?.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.full_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Actividad</TableHead>
+                    <TableHead>Usuario</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Horario</TableHead>
+                    <TableHead>Tags</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {activities?.items.map((activity) => (
+                    <TableRow key={activity.id}>
+                      <TableCell className="font-medium">{activity.name}</TableCell>
+                      <TableCell className="text-gray-700">{activity.user_full_name}</TableCell>
+                      <TableCell className="text-gray-400 text-xs">{activity.user_email}</TableCell>
+                      <TableCell className="text-gray-500 text-xs">{activity.date}</TableCell>
+                      <TableCell className="text-xs text-gray-500">
+                        {activity.start_time.slice(0, 5)} — {activity.end_time.slice(0, 5)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1 flex-wrap">
+                          {activity.tags.map((tag) => (
+                            <Badge key={tag} variant="secondary">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {(!activities || activities.items.length === 0) && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-gray-400 py-8">
+                        No hay actividades con los filtros seleccionados
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </div>
         )}
 
@@ -162,37 +220,55 @@ export default function AdminPage() {
               )}
             </div>
 
-            <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Usuario</TableHead>
-                    <TableHead>Periodo</TableHead>
-                    <TableHead>Horas</TableHead>
-                    <TableHead>Actividades</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {summary?.items.map((item, i) => (
-                    <TableRow key={`${item.user_id}-${item.period}-${i}`}>
-                      <TableCell className="font-medium text-gray-700">
-                        {item.user_full_name}
-                      </TableCell>
-                      <TableCell className="text-gray-500 text-xs">{item.period}</TableCell>
-                      <TableCell className="text-sm font-mono">{item.total_hours} h</TableCell>
-                      <TableCell className="text-sm text-gray-500">{item.count}</TableCell>
-                    </TableRow>
-                  ))}
-                  {(!summary || summary.items.length === 0) && (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center text-gray-400 py-8">
-                        No hay datos para el período seleccionado
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+            {summary && summary.items.length > 0 ? (
+              <div className="space-y-3">
+                {(() => {
+                  const grouped: Record<string, typeof summary.items> = {}
+                  for (const item of summary.items) {
+                    if (!grouped[item.user_full_name]) {
+                      grouped[item.user_full_name] = []
+                    }
+                    grouped[item.user_full_name].push(item)
+                  }
+                  return Object.entries(grouped).map(([userName, items]) => {
+                    const userMax = Math.max(...items.map((i) => i.total_hours), 0.1)
+                    return (
+                      <div key={userName} className="border border-gray-200 rounded-xl bg-white p-4">
+                        <h3 className="text-sm font-semibold text-gray-700 mb-3">{userName}</h3>
+                        <div className="space-y-2">
+                          {items.map((item) => {
+                            const pct = (item.total_hours / maxHours) * 100
+                            return (
+                              <div key={`${item.user_id}-${item.period}`} className="flex items-center gap-3">
+                                <span className="text-sm text-gray-600 w-24 shrink-0 font-mono">
+                                  {item.period}
+                                </span>
+                                <div className="flex-1 h-5 bg-gray-100 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-brand-500 rounded-full transition-all duration-300"
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                </div>
+                                <span className="text-sm font-semibold w-16 text-right tabular-nums">
+                                  {item.total_hours}h
+                                </span>
+                                <span className="text-xs text-gray-400 w-10 text-right">
+                                  {item.count} act.
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })
+                })()}
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500 py-8 text-center">
+                No hay datos para el período seleccionado.
+              </div>
+            )}
           </div>
         )}
       </div>
